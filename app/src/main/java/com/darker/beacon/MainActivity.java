@@ -1,12 +1,15 @@
 package com.darker.beacon;
 
+import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothManager;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.RemoteException;
-import android.support.annotation.RequiresApi;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.TextView;
@@ -22,13 +25,12 @@ import org.altbeacon.beacon.Region;
 import java.util.Collection;
 
 public class MainActivity extends AppCompatActivity implements BeaconConsumer {
-
-    protected static final String TAG = "MonitoringActivity";
+    protected static final String TAG = "MainActivity";
     private BeaconManager beaconManager;
     private TextView textView, name, address, distance;
     private BluetoothAdapter mBluetoothAdapter;
+    private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
 
-    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -38,9 +40,11 @@ public class MainActivity extends AppCompatActivity implements BeaconConsumer {
         name = (TextView) findViewById(R.id.name);
         address = (TextView) findViewById(R.id.address);
         distance = (TextView) findViewById(R.id.distance);
+        setBluetooth();
+    }
 
-        final BluetoothManager bluetoothManager =
-                (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
+    private void setBluetooth() {
+        final BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         mBluetoothAdapter = bluetoothManager.getAdapter();
         if (mBluetoothAdapter == null || !mBluetoothAdapter.isEnabled()) {
 //            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
@@ -48,6 +52,55 @@ public class MainActivity extends AppCompatActivity implements BeaconConsumer {
             mBluetoothAdapter.enable();
         }
 
+        permisstion();
+    }
+
+    private void permisstion() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // Android M Permission check
+            if (this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("This app needs location access");
+                builder.setMessage("Please grant location access so this app can detect beacons.");
+                builder.setPositiveButton(android.R.string.ok, null);
+                builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                    @Override
+                    public void onDismiss(DialogInterface dialog) {
+                        requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSION_REQUEST_COARSE_LOCATION);
+                    }
+                });
+                builder.show();
+            }
+        } else {
+            startBeacon();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case PERMISSION_REQUEST_COARSE_LOCATION: {
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Log.d(TAG, "coarse location permission granted");
+                    startBeacon();
+                } else {
+                    final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("Functionality limited");
+                    builder.setMessage("Since location access has not been granted, this app will not be able to discover beacons when in the background.");
+                    builder.setPositiveButton(android.R.string.ok, null);
+                    builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
+
+                        @Override
+                        public void onDismiss(DialogInterface dialog) {
+                        }
+                    });
+                    builder.show();
+                }
+            }
+        }
+    }
+
+    private void startBeacon() {
         beaconManager = BeaconManager.getInstanceForApplication(this);
         // To detect proprietary beacons, you must add a line like below corresponding to your beacon
         // type.  Do a web search for "setBeaconLayout" to get the proper expression.
@@ -104,13 +157,13 @@ public class MainActivity extends AppCompatActivity implements BeaconConsumer {
     @Override
     protected void onStart() {
         super.onStart();
-        beaconManager.bind(this);
+//        setBluetooth();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        beaconManager.bind(this);
+        setBluetooth();
     }
 
     @Override
