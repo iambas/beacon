@@ -155,12 +155,6 @@ public class MainActivity extends AppCompatActivity implements BeaconConsumer {
     }
 
     @Override
-    protected void onStart() {
-        super.onStart();
-//        setBluetooth();
-    }
-
-    @Override
     protected void onResume() {
         super.onResume();
         setBluetooth();
@@ -170,17 +164,20 @@ public class MainActivity extends AppCompatActivity implements BeaconConsumer {
     protected void onPause() {
         super.onPause();
         beaconManager.unbind(this);
+        mBluetoothAdapter.disable();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
         beaconManager.unbind(this);
+        mBluetoothAdapter.disable();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         beaconManager.unbind(this);
+        mBluetoothAdapter.disable();
     }
 }
